@@ -1,0 +1,99 @@
+name: Pulsar Engine Build
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Ajuste estas versões para as que a sua base exige (veja o README da base).
+env:
+  HAXE_VERSION: "4.3.7"
+  JAVA_VERSION: "21"
+  ANDROID_PLATFORM: "android-36"
+  ANDROID_BUILD_TOOLS: "36.0.0"
+  NDK_VERSION: "27.3.13750724" # r27d
+
+jobs:
+  android:
+    name: Android (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalar plataforma, build-tools e NDK
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "ndk;${NDK_VERSION}"
+
+      - name: Instalar dependências Haxe
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install hmm
+          haxelib run hmm install
+
+      - name: Configurar Lime para Android
+        run: |
+          haxelib run lime config ANDROID_SDK "$ANDROID_HOME"
+          haxelib run lime config ANDROID_NDK_ROOT "$ANDROID_HOME/ndk/${NDK_VERSION}"
+          haxelib run lime config JAVA_HOME "$JAVA_HOME"
+          haxelib run lime config ANDROID_SETUP true
+
+      - name: Compilar
+        run: haxelib run lime build android -final
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PulsarEngine-android
+          path: export/release/android/bin/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+  desktop:
+    name: Desktop (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-latest
+            target: linux
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Dependências do sistema (Linux)
+        if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libvlc-dev libvlccore-dev vlc
+
+      - name: Instalar dependências Haxe
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install hmm
+          haxelib run hmm install
+
+      - name: Compilar
+        run: haxelib run lime build ${{ matrix.target }} -final
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PulsarEngine-${{ matrix.target }}
+          path: export/release/${{ matrix.target }}/bin
+          if-no-files-found: error
