@@ -2,16 +2,8 @@ name: Pulsar Engine Build
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
-
-# Ajuste estas versões para as que a sua base exige (veja o README da base).
-env:
-  HAXE_VERSION: "4.3.7"
-  JAVA_VERSION: "21"
-  ANDROID_PLATFORM: "android-36"
-  ANDROID_BUILD_TOOLS: "36.0.0"
-  NDK_VERSION: "27.3.13750724" # r27d
 
 jobs:
   android:
@@ -22,35 +14,37 @@ jobs:
 
       - uses: krdlab/setup-haxe@v1
         with:
-          haxe-version: ${{ env.HAXE_VERSION }}
+          haxe-version: 4.3.4
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # NDK r21e é a versão recomendada pelo Lime. Se o build reclamar do NDK, é aqui que se muda.
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r21e
 
-      - name: Instalar plataforma, build-tools e NDK
-        run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "ndk;${NDK_VERSION}"
-
-      - name: Instalar dependências Haxe
+      - name: Instalar dependências Haxe (setup/unix.sh do fork)
         run: |
           haxelib setup ~/haxelib
-          haxelib install hmm
-          haxelib run hmm install
+          chmod +x ./setup/unix.sh
+          sh ./setup/unix.sh
+
+      - name: Aceitar licenças do Android SDK
+        run: yes | sdkmanager --licenses > /dev/null || true
 
       - name: Configurar Lime para Android
         run: |
           haxelib run lime config ANDROID_SDK "$ANDROID_HOME"
-          haxelib run lime config ANDROID_NDK_ROOT "$ANDROID_HOME/ndk/${NDK_VERSION}"
+          haxelib run lime config ANDROID_NDK_ROOT "${{ steps.setup-ndk.outputs.ndk-path }}"
           haxelib run lime config JAVA_HOME "$JAVA_HOME"
           haxelib run lime config ANDROID_SETUP true
 
       - name: Compilar
-        run: haxelib run lime build android -final
+        run: haxelib run lime build Project.xml android -final
 
       - uses: actions/upload-artifact@v4
         with:
@@ -58,42 +52,54 @@ jobs:
           path: export/release/android/bin/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
-  desktop:
-    name: Desktop (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: windows
-          - os: ubuntu-latest
-            target: linux
-    defaults:
-      run:
-        shell: bash
+  linux:
+    name: Desktop (Linux)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: krdlab/setup-haxe@v1
         with:
-          haxe-version: ${{ env.HAXE_VERSION }}
+          haxe-version: 4.3.4
 
-      - name: Dependências do sistema (Linux)
-        if: matrix.target == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y libvlc-dev libvlccore-dev vlc
-
-      - name: Instalar dependências Haxe
+      - name: Instalar dependências
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libvlc-dev libvlccore-dev
           haxelib setup ~/haxelib
-          haxelib install hmm
-          haxelib run hmm install
+          chmod +x ./setup/unix.sh
+          sh ./setup/unix.sh
 
       - name: Compilar
-        run: haxelib run lime build ${{ matrix.target }} -final
+        run: haxelib run lime build Project.xml linux -final
 
       - uses: actions/upload-artifact@v4
         with:
-          name: PulsarEngine-${{ matrix.target }}
-          path: export/release/${{ matrix.target }}/bin
+          name: PulsarEngine-linux
+          path: export/release/linux/bin
+          if-no-files-found: error
+
+  windows:
+    name: Desktop (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.4
+
+      - name: Instalar dependências
+        shell: cmd
+        run: |
+          haxelib setup C:/haxelib
+          .\"setup/windows.bat"
+
+      - name: Compilar
+        run: haxelib run lime build Project.xml windows -final
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PulsarEngine-windows
+          path: export/release/windows/bin
           if-no-files-found: error
