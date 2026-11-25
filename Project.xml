@@ -3,7 +3,7 @@
 	<!-- _________________________ Application Settings _________________________ -->
 
 	<app title="Pulsar Engine" unless="mobile" />
-	<app title="Psych Engine" if="mobile" />
+	<app title="Pulsar Engine" if="mobile" />
 	<app file="PulsarEngine" packageName="com.pulsar.engine" package="com.pulsar.engine" main="Main" version="0.2.8" company="ShadowMario" />
 
 	<!--Switch Export with Unique ApplicationID and Icon-->
