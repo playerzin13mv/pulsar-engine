@@ -596,7 +596,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 			"Ctrl + V - Paste Copied Notes",
 			"Ctrl + A - Select all in current Section",
 			"Ctrl + S - Quicksave",
-		]
+		];
 		#else
 		(!inExtraControls ? [
 			"Swipe - Move Conductor's Time",
