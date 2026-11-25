@@ -32,6 +32,7 @@ jobs:
           haxelib setup ~/haxelib
           chmod +x ./setup/unix.sh
           sh ./setup/unix.sh
+          haxelib install extension-androidtools 2.2.2
 
       - name: Aceitar licenças do Android SDK
         run: yes | sdkmanager --licenses > /dev/null || true
@@ -69,6 +70,7 @@ jobs:
           haxelib setup ~/haxelib
           chmod +x ./setup/unix.sh
           sh ./setup/unix.sh
+          haxelib install extension-androidtools 2.2.2
 
       - name: Compilar
         run: haxelib run lime build Project.xml linux -final
