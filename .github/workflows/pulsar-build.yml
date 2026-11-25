@@ -34,6 +34,12 @@ jobs:
           sh ./setup/unix.sh
           haxelib install extension-androidtools 2.2.2
 
+      # O hxcpp vem do git e precisa ter a ferramenta principal recompilada.
+      - name: Recompilar ferramenta do hxcpp
+        run: |
+          cd ~/haxelib/hxcpp/git/tools/hxcpp
+          haxe compile.hxml
+
       - name: Aceitar licenças do Android SDK
         run: yes | sdkmanager --licenses > /dev/null || true
 
@@ -53,8 +59,11 @@ jobs:
           path: export/release/android/bin/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
+  # Os builds de desktop só rodam quando você pedir (botão "Run workflow" na aba Actions).
+  # O código do fork ainda tem erros fora do mobile, que serão corrigidos depois.
   linux:
     name: Desktop (Linux)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +79,8 @@ jobs:
           haxelib setup ~/haxelib
           chmod +x ./setup/unix.sh
           sh ./setup/unix.sh
-          haxelib install extension-androidtools 2.2.2
+          cd ~/haxelib/hxcpp/git/tools/hxcpp
+          haxe compile.hxml
 
       - name: Compilar
         run: haxelib run lime build Project.xml linux -final
@@ -83,6 +93,7 @@ jobs:
 
   windows:
     name: Desktop (Windows)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -96,6 +107,12 @@ jobs:
         run: |
           haxelib setup C:/haxelib
           .\"setup/windows.bat"
+
+      - name: Recompilar ferramenta do hxcpp
+        shell: bash
+        run: |
+          cd C:/haxelib/hxcpp/git/tools/hxcpp
+          haxe compile.hxml
 
       - name: Compilar
         run: haxelib run lime build Project.xml windows -final
