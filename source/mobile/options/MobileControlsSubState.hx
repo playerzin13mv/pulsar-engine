@@ -14,6 +14,7 @@ class MobileControlsSubState extends MusicBeatSubstate
 {
 	var options:Array<String> = [
 		'HITBOX',
+		'BOTTOM_ROW',
 		'LEFT_FULL',
 		'RIGHT_FULL',
 		'CUSTOM',

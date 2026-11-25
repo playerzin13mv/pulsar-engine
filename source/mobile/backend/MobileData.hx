@@ -9,6 +9,7 @@ enum ControlMode {
 	HITBOX;
 	LEFT_FULL;
 	RIGHT_FULL;
+	BOTTOM_ROW;
 	CUSTOM;
 }
 
@@ -78,6 +79,22 @@ class MobileData
 			case 3: [196, FlxG.height - 220];
 			case 4: [FlxG.width - 225, FlxG.height - 215];
 			default: [0, 0];
+		}
+	}
+
+	// Estilo "Play Store": 4 setas em fileira na parte de baixo da tela.
+	// Para mudar o espaçamento, ajuste "margin" (distância das bordas).
+	public static function applyBottomRow(virtualPad:VirtualPad) {
+		var buttons = [virtualPad.buttonLeft, virtualPad.buttonDown, virtualPad.buttonUp, virtualPad.buttonRight];
+		var margin:Float = 40;
+		var step:Float = (FlxG.width - margin * 2 - buttons[0].width) / 3;
+		for (i => button in buttons) {
+			button.x = margin + step * i;
+			button.y = FlxG.height - button.height - 20;
+		}
+		if (virtualPad.buttonExtra != null) {
+			virtualPad.buttonExtra.x = FlxG.width - virtualPad.buttonExtra.width - 20;
+			virtualPad.buttonExtra.y = buttons[0].y - virtualPad.buttonExtra.height - 20;
 		}
 	}
 }

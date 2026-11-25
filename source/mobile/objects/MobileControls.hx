@@ -45,6 +45,10 @@ class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 			case RIGHT_FULL:
 				virtualPad = new VirtualPad(RIGHT_FULL, NONE, extra);
 				add(virtualPad);
+			case BOTTOM_ROW:
+				virtualPad = new VirtualPad(CUSTOM, NONE, extra);
+				MobileData.applyBottomRow(virtualPad);
+				add(virtualPad);
 			case CUSTOM:
 				virtualPad = new VirtualPad(CUSTOM, NONE, extra);
 				add(virtualPad);
@@ -56,7 +60,7 @@ class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 	}
 
 	function get_isVirtualPad():Bool {
-		return (controlMode == 'LEFT_FULL' || controlMode == 'RIGHT_FULL' || controlMode == 'CUSTOM');
+		return (controlMode == 'LEFT_FULL' || controlMode == 'RIGHT_FULL' || controlMode == 'CUSTOM' || controlMode == 'BOTTOM_ROW');
 	}
 
 	// May need to cast if you want the class specific stuff
