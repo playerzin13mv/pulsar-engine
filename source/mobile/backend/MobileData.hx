@@ -120,6 +120,28 @@ class MobileData
 			button.x = pos[0];
 			button.y = pos[1];
 		}
+		updateBottomRowGaps(virtualPad);
+	}
+
+	// Tocar no espaço entre duas setas vizinhas (na mesma fileira) aperta as duas ao mesmo tempo.
+	// Recalculado sempre que o layout é aplicado, então acompanha tamanho e posição escolhidos.
+	public static function updateBottomRowGaps(virtualPad:VirtualPad) {
+		var arrows:Array<TouchButton> = [virtualPad.buttonLeft, virtualPad.buttonDown, virtualPad.buttonUp, virtualPad.buttonRight];
+		for (button in arrows) {
+			button.hitPadLeft = 0;
+			button.hitPadRight = 0;
+		}
+		arrows.sort(function(a:TouchButton, b:TouchButton):Int return a.x < b.x ? -1 : (a.x > b.x ? 1 : 0));
+		for (i in 0...arrows.length - 1) {
+			var a:TouchButton = arrows[i];
+			var b:TouchButton = arrows[i + 1];
+			var gap:Float = b.x - (a.x + a.width);
+			var sameRow:Bool = a.y < b.y + b.height && b.y < a.y + a.height;
+			if (gap > 0 && sameRow) {
+				a.hitPadRight = gap;
+				b.hitPadLeft = gap;
+			}
+		}
 	}
 
 	public static function saveBottomRow(virtualPad:VirtualPad, scale:Float) {

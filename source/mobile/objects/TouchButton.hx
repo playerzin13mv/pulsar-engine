@@ -83,6 +83,13 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 	public var labelAlphas:Array<Float> = [0.8, 1.0, 0.5];
 
 	/**
+	 * Área extra de toque à esquerda e à direita do botão (em pixels).
+	 * Usada pelo estilo BOTTOM_ROW: tocar no espaço entre dois botões vizinhos aperta os dois.
+	 */
+	public var hitPadLeft:Float = 0;
+	public var hitPadRight:Float = 0;
+
+	/**
 	 * What animation should be played for each status.
 	 * Default is ["normal", "highlight", "pressed"].
 	 */
@@ -368,6 +375,12 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 		return overlap;
 	}
 
+	function overlapsGap(point:FlxPoint):Bool
+	{
+		if (hitPadLeft <= 0 && hitPadRight <= 0) return false;
+		return point.x >= x - hitPadLeft && point.x < x + width + hitPadRight && point.y >= y && point.y < y + height;
+	}
+
 	function checkInput(pointer:FlxPointer, input:IFlxInput, justPressedPosition:FlxPoint, camera:FlxCamera):Bool
 	{
 		if (maxInputMovement != Math.POSITIVE_INFINITY
@@ -376,7 +389,7 @@ class TypedTouchButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 		{
 			currentInput = null;
 		}
-		else if (overlapsPoint(pointer.getWorldPosition(camera, _point), true, camera))
+		else if (overlapsPoint(pointer.getWorldPosition(camera, _point), true, camera) || overlapsGap(pointer.getWorldPosition(camera, _point)))
 		{
 			updateStatus(input);
 			return true;
