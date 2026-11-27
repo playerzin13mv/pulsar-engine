@@ -2,6 +2,7 @@ package mobile.options;
 
 import flixel.input.keyboard.FlxKey;
 import openfl.events.KeyboardEvent;
+import flixel.text.FlxText;
 
 import flixel.addons.display.FlxBackdrop;
 import flixel.addons.display.FlxGridOverlay;
@@ -36,6 +37,10 @@ class MobileControlsSubState extends MusicBeatSubstate
 	var rebindButton:PsychUIButton;
 	var resetButton:PsychUIButton;
 	var snapButton:PsychUIButton;
+	var sizeUpButton:PsychUIButton;
+	var sizeDownButton:PsychUIButton;
+	var sizeText:FlxText;
+	var bottomRowScale:Float = 1;
 
 	override function create() {
 		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
@@ -144,6 +149,21 @@ class MobileControlsSubState extends MusicBeatSubstate
 		snapButton.kill();
 		add(snapButton);
 
+		sizeText = new FlxText(snapButton.x, snapButton.y + 95, 250, '', 26);
+		sizeText.setFormat(Paths.font('vcr.ttf'), 26, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		sizeText.kill();
+		add(sizeText);
+
+		sizeUpButton = makeButton(snapButton.x, snapButton.y + 135, Language.getPhrase('mobile_controls_size_up', 'Size +'), 0xFF00C8FF);
+		sizeUpButton.update(FlxG.elapsed);
+		sizeUpButton.kill();
+		add(sizeUpButton);
+
+		sizeDownButton = makeButton(snapButton.x, snapButton.y + 225, Language.getPhrase('mobile_controls_size_down', 'Size -'), 0xFFFF8800);
+		sizeDownButton.update(FlxG.elapsed);
+		sizeDownButton.kill();
+		add(sizeDownButton);
+
 		curSelected = Std.int(Math.max(options.indexOf(ClientPrefs.data.controlMode.toUpperCase()), 0));
 		changeControl(0, false);
 
@@ -159,6 +179,9 @@ class MobileControlsSubState extends MusicBeatSubstate
 				ClientPrefs.saveSettings();
 				if (options[curSelected] == 'CUSTOM') {
 					MobileData.saveCustomPad(mobileControls.virtualPad);
+				}
+				else if (options[curSelected] == 'BOTTOM_ROW') {
+					MobileData.saveBottomRow(mobileControls.virtualPad, bottomRowScale);
 				}
 				close();
 			}
@@ -177,6 +200,23 @@ class MobileControlsSubState extends MusicBeatSubstate
 				}
 				if (TouchUtil.overlaps(snapButton) && TouchUtil.justPressed) {
 					snapToGrid = grid.visible = !grid.visible;
+				}
+			}
+			else if (options[curSelected] == 'BOTTOM_ROW') {
+				if (TouchUtil.overlaps(resetButton) && TouchUtil.justPressed) {
+					MobileData.resetBottomRow();
+					bottomRowScale = 1;
+					MobileData.applyBottomRow(mobileControls.virtualPad, 1);
+					updateSizeText();
+				}
+				if (TouchUtil.overlaps(snapButton) && TouchUtil.justPressed) {
+					snapToGrid = grid.visible = !grid.visible;
+				}
+				if (TouchUtil.overlaps(sizeUpButton) && TouchUtil.justPressed) {
+					changeBottomRowSize(0.1);
+				}
+				if (TouchUtil.overlaps(sizeDownButton) && TouchUtil.justPressed) {
+					changeBottomRowSize(-0.1);
 				}
 			}
 
@@ -205,7 +245,7 @@ class MobileControlsSubState extends MusicBeatSubstate
 			hideUI(showingUI);
 		}
 
-		if (options[curSelected] == 'CUSTOM') {
+		if (options[curSelected] == 'CUSTOM' || options[curSelected] == 'BOTTOM_ROW') {
 			for (button in [mobileControls.virtualPad.buttonLeft, mobileControls.virtualPad.buttonDown, mobileControls.virtualPad.buttonUp, mobileControls.virtualPad.buttonRight, mobileControls.virtualPad.buttonExtra]) {
 				if (!ClientPrefs.data.extraButton && button == mobileControls.virtualPad.buttonExtra) continue;
 
@@ -249,7 +289,7 @@ class MobileControlsSubState extends MusicBeatSubstate
 
 		if (mobileControls.isVirtualPad) mobileControls.virtualPad.allowSwiping = false;
 
-		if (options[curSelected] == 'CUSTOM') {
+		if (options[curSelected] == 'CUSTOM' || options[curSelected] == 'BOTTOM_ROW') {
 			resetButton.revive();
 			snapButton.revive();
 		}
@@ -258,11 +298,60 @@ class MobileControlsSubState extends MusicBeatSubstate
 			if (snapButton.alive) snapButton.kill();
 			if (snapToGrid) snapToGrid = grid.visible = false;
 		}
+
+		if (options[curSelected] == 'BOTTOM_ROW') {
+			bottomRowScale = MobileData.getBottomRowScale();
+			sizeUpButton.revive();
+			sizeDownButton.revive();
+			sizeText.revive();
+			updateSizeText();
+		}
+		else {
+			if (sizeUpButton.alive) sizeUpButton.kill();
+			if (sizeDownButton.alive) sizeDownButton.kill();
+			if (sizeText.alive) sizeText.kill();
+		}
+	}
+
+	function makeButton(x:Float, y:Float, label:String, color:Int):PsychUIButton {
+		var b:PsychUIButton = new PsychUIButton(x, y, label, null, 250, 80);
+		b.normalStyle.bgColor = color;
+		b.text.font = Paths.font('vcr.ttf');
+		b.text.fieldWidth = 0;
+		b.text.size = 26;
+		if (b.text.width > b.bg.width - 20) {
+			b.text.scale.x = b.text.scale.y = b.bg.width / b.width;
+			b.text.updateHitbox();
+		}
+		b.text.x = b.bg.x + (b.bg.width - b.text.width) / 2;
+		b.text.y = b.bg.y + (b.bg.height - b.text.height) / 2;
+		return b;
+	}
+
+	// Muda o tamanho dos botões do BOTTOM_ROW mantendo o centro de cada um no mesmo lugar
+	function changeBottomRowSize(change:Float) {
+		var newScale:Float = FlxMath.bound(Math.round((bottomRowScale + change) * 10) / 10, 0.5, 2);
+		if (newScale == bottomRowScale) return;
+		for (i => button in MobileData.bottomRowButtons(mobileControls.virtualPad)) {
+			if (i == 4 && !ClientPrefs.data.extraButton) continue;
+			var centerX:Float = button.x + button.width / 2;
+			var centerY:Float = button.y + button.height / 2;
+			button.scale.set(newScale, newScale);
+			button.updateHitbox();
+			button.x = centerX - button.width / 2;
+			button.y = centerY - button.height / 2;
+		}
+		bottomRowScale = newScale;
+		updateSizeText();
+	}
+
+	function updateSizeText() {
+		sizeText.text = Language.getPhrase('mobile_controls_size', 'Size') + ': ' + Std.int(Math.round(bottomRowScale * 100)) + '%';
 	}
 
 	function hideUI(hide:Bool = false) {
 		showingUI = !hide;
-		for (button in [curControl, leftArrow, rightArrow, exitButton, resetButton, hideButton, rebindButton]) {
+		for (button in [curControl, leftArrow, rightArrow, exitButton, resetButton, hideButton, rebindButton, sizeUpButton, sizeDownButton, sizeText]) {
 			if (button == null) continue;
 
 			if (button == hideButton) {
